@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, Save, Trash2, Building2 } from "lucide-react";
 import { toast } from "sonner";
@@ -37,10 +37,25 @@ export default function AddLogo() {
         refused.push(f.name);
       }
     }
-    if (refused.length > 0) setRejected(refused);
+    if (refused.length > 0) {
+      setRejected(refused);
+      toast.error("Some files were rejected", {
+        description: `${refused.length} non-image file${refused.length === 1 ? "" : "s"} skipped.`,
+      });
+    }
+
+    const remainingSlots = Math.max(0, REQUIRED_COUNT - staged.length);
+    const overflow = accepted.length - remainingSlots;
+    const toAdd = accepted.slice(0, remainingSlots);
+
+    if (overflow > 0) {
+      toast.warning("Too many images", {
+        description: `Only ${REQUIRED_COUNT} images allowed per company. ${overflow} extra ignored.`,
+      });
+    }
 
     const next: StagedFile[] = [];
-    for (const f of accepted) {
+    for (const f of toAdd) {
       const dataUrl = await fileToDataUrl(f);
       next.push({ id: crypto.randomUUID(), file: f, dataUrl });
     }
@@ -88,12 +103,6 @@ export default function AddLogo() {
       setSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    return () => {
-      // dataUrls live in memory, no object URL cleanup needed
-    };
-  }, []);
 
   const previewItems = staged.map((s) => ({
     id: s.id,
@@ -189,7 +198,7 @@ export default function AddLogo() {
             <Button
               onClick={handleSave}
               disabled={!isValid || submitting}
-              className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.4)] gap-2"
+              className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.4)] gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer"
             >
               <Save className="h-4 w-4" />
               Save Company
@@ -200,10 +209,12 @@ export default function AddLogo() {
                 setCompanyName("");
                 setStaged([]);
                 setRejected([]);
+                toast("Cleared", { description: "Form reset." });
               }}
               disabled={!companyName && staged.length === 0}
+              className="cursor-pointer disabled:cursor-not-allowed"
             >
-              Reset
+              Clear All
             </Button>
           </div>
         </motion.div>

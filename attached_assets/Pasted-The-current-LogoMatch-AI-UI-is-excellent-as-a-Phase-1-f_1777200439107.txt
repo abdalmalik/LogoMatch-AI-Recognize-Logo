@@ -1,0 +1,57 @@
+The current LogoMatch AI UI is excellent as a Phase 1 foundation, but some interactive elements are not working.
+
+Please fix the Phase 1 interactivity without adding a real AI model yet.
+
+Required fixes:
+
+1. Recognize Logo Page
+- Make the "Drop a logo to recognize" upload area fully functional.
+- Allow clicking the upload box to select one image from the computer.
+- Allow drag and drop for one image.
+- Accept only image files: PNG, JPG, JPEG, SVG, WEBP.
+- Show a preview of the uploaded test image.
+- Enable the "Recognize" button only after one valid image is uploaded.
+- When the user clicks "Recognize", do not run a real AI model yet.
+- Instead, show a professional placeholder recognition result:
+  - Status: Demo Mode
+  - Predicted Company: Awaiting AI Backend
+  - Similarity Score: Not available in Phase 1
+  - Message: "The image upload pipeline is working. Real recognition will be added in Phase 2."
+- Add a "Clear Image" button.
+
+2. Add Company Logo Page
+- Make sure the upload box works by click and drag/drop.
+- Allow exactly 5 images only.
+- Show image previews.
+- Show clear validation messages if the number of images is less than 5 or more than 5.
+- Add a "Clear All" button.
+- Add a disabled/enabled state for the save button:
+  - Disabled until company name is entered and exactly 5 images are uploaded.
+  - Enabled when requirements are met.
+- When clicking save, store the company temporarily in frontend state or localStorage.
+- Show a success message after saving.
+
+3. Account/Profile Icon
+- Make the account icon clickable.
+- On click, open a small dropdown menu with:
+  - Profile
+  - Settings
+  - Project Info
+  - Sign out
+- These can be placeholder links/buttons for now.
+- Add smooth open/close animation.
+- Close the dropdown when clicking outside.
+
+4. General UI Behavior
+- Add hover states and active states for all clickable buttons.
+- Make disabled buttons visually clear.
+- Add cursor pointer where needed.
+- Add simple toast notifications for success/errors.
+- Keep the same visual design and structure.
+- Do not redesign the whole app.
+- Do not add real AI model.
+- Do not add FastAPI yet.
+- Only fix Phase 1 frontend interactions.
+
+Important:
+Preserve the current 10/10 structure and design. Only improve functionality and interactivity.

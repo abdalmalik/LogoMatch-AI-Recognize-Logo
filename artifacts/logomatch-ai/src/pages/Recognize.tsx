@@ -1,33 +1,71 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { AlertCircle, ScanLine, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AlertCircle, ScanLine, X, Sparkles, Info, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { UploadBox } from "@/components/UploadBox";
 import { ResultCard } from "@/components/ResultCard";
+import { StatusPill } from "@/components/StatusPill";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useCompanies } from "@/store/companies";
 import { fileToDataUrl, isImageFile } from "@/lib/file-utils";
 
+type DemoResult = {
+  status: "Demo Mode";
+  predictedCompany: "Awaiting AI Backend";
+  similarityScore: "Not available in Phase 1";
+  message: string;
+};
+
 export default function Recognize() {
+  const { dispatch } = useCompanies();
   const [preview, setPreview] = useState<{ src: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<DemoResult | null>(null);
 
   const onFilesSelected = async (files: File[]) => {
     setError(null);
+    setResult(null);
     const file = files[0];
     if (!file) return;
     if (!isImageFile(file)) {
-      setError(`"${file.name}" is not an image file.`);
+      setError(`"${file.name}" is not an image file. Use PNG, JPG, JPEG, SVG, or WEBP.`);
+      toast.error("Invalid file type", {
+        description: "Only PNG, JPG, JPEG, SVG, or WEBP images are accepted.",
+      });
       return;
     }
     const src = await fileToDataUrl(file);
     setPreview({ src, name: file.name });
   };
+
+  const clearImage = () => {
+    setPreview(null);
+    setResult(null);
+    setError(null);
+  };
+
+  const runRecognize = async () => {
+    if (!preview) return;
+    setRunning(true);
+    setResult(null);
+    await new Promise((r) => setTimeout(r, 900));
+    setResult({
+      status: "Demo Mode",
+      predictedCompany: "Awaiting AI Backend",
+      similarityScore: "Not available in Phase 1",
+      message:
+        "The image upload pipeline is working. Real recognition will be added in Phase 2.",
+    });
+    dispatch({ type: "INCREMENT_RECOGNITION_TESTS" });
+    setRunning(false);
+    toast.success("Demo recognition complete", {
+      description: "Pipeline OK — real model arrives in Phase 2.",
+    });
+  };
+
+  const canRecognize = !!preview && !running;
 
   return (
     <div>
@@ -45,15 +83,15 @@ export default function Recognize() {
           <div>
             <h3 className="font-semibold">Test Image</h3>
             <p className="text-xs text-muted-foreground">
-              One image · accepted formats: PNG, JPG, SVG, WEBP
+              One image · accepted formats: PNG, JPG, JPEG, SVG, WEBP
             </p>
           </div>
 
           {preview ? (
             <div className="relative rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
               <button
-                onClick={() => setPreview(null)}
-                className="absolute top-3 right-3 z-10 h-7 w-7 rounded-full bg-black/70 backdrop-blur border border-white/10 flex items-center justify-center hover:bg-destructive/80 transition-colors"
+                onClick={clearImage}
+                className="absolute top-3 right-3 z-10 h-7 w-7 rounded-full bg-black/70 backdrop-blur border border-white/10 flex items-center justify-center hover:bg-destructive/80 transition-colors cursor-pointer"
                 aria-label="Clear image"
               >
                 <X className="h-3.5 w-3.5" />
@@ -71,10 +109,10 @@ export default function Recognize() {
             </div>
           ) : (
             <UploadBox
-              accept="image/*"
+              accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
               onFilesSelected={onFilesSelected}
               label="Drop a logo to recognize"
-              hint="Single image only"
+              hint="Single image · PNG, JPG, JPEG, SVG, WEBP"
             />
           )}
 
@@ -85,23 +123,27 @@ export default function Recognize() {
             </div>
           )}
 
-          <div className="pt-2 border-t border-white/5">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="inline-block">
-                    <Button
-                      disabled
-                      className="bg-gradient-to-r from-primary to-accent text-white opacity-60 cursor-not-allowed gap-2"
-                    >
-                      <ScanLine className="h-4 w-4" />
-                      Recognize
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>AI model not yet connected</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+            <Button
+              onClick={runRecognize}
+              disabled={!canRecognize}
+              className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.4)] gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            >
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ScanLine className="h-4 w-4" />
+              )}
+              {running ? "Running…" : "Recognize"}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={clearImage}
+              disabled={!preview && !result}
+              className="cursor-pointer disabled:cursor-not-allowed"
+            >
+              Clear Image
+            </Button>
           </div>
         </motion.div>
 
@@ -111,7 +153,63 @@ export default function Recognize() {
           transition={{ delay: 0.05 }}
           className="space-y-4"
         >
-          <ResultCard placeholder />
+          <AnimatePresence mode="wait">
+            {result ? (
+              <motion.div
+                key="demo-result"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="glass-card rounded-xl p-6 relative overflow-hidden"
+              >
+                <div className="absolute -top-16 -right-16 h-40 w-40 bg-accent/30 rounded-full blur-3xl" />
+                <div className="absolute -bottom-16 -left-16 h-40 w-40 bg-primary/30 rounded-full blur-3xl" />
+                <div className="relative space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      Recognition Result
+                    </div>
+                    <StatusPill label={result.status} variant="warning" />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                        Predicted Company
+                      </p>
+                      <p className="text-2xl font-semibold mt-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        {result.predictedCompany}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                        Similarity Score
+                      </p>
+                      <p className="font-mono text-sm mt-1 text-muted-foreground">
+                        {result.similarityScore}
+                      </p>
+                    </div>
+
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs text-foreground/80">
+                      <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
+                      <p>{result.message}</p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="placeholder"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <ResultCard placeholder />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div className="glass-card rounded-xl p-5">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">
@@ -122,19 +220,25 @@ export default function Recognize() {
                 <span className="h-6 w-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-mono">
                   1
                 </span>
-                <span className="text-muted-foreground">Encode test image into embedding vector</span>
+                <span className="text-muted-foreground">
+                  Encode test image into embedding vector
+                </span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="h-6 w-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-mono">
                   2
                 </span>
-                <span className="text-muted-foreground">Compare against company prototypes</span>
+                <span className="text-muted-foreground">
+                  Compare against company prototypes
+                </span>
               </li>
               <li className="flex items-center gap-3">
                 <span className="h-6 w-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-mono">
                   3
                 </span>
-                <span className="text-muted-foreground">Return nearest match with confidence</span>
+                <span className="text-muted-foreground">
+                  Return nearest match with confidence
+                </span>
               </li>
             </ol>
           </div>
