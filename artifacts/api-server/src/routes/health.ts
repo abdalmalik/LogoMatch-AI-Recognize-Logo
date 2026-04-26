@@ -1,11 +1,19 @@
 import { Router, type IRouter } from "express";
-import { HealthCheckResponse } from "@workspace/api-zod";
 
 const router: IRouter = Router();
 
+const payload = () => ({
+  status: "ok",
+  service: "logomatch-ai-backend",
+  timestamp: new Date().toISOString(),
+});
+
 router.get("/healthz", (_req, res) => {
-  const data = HealthCheckResponse.parse({ status: "ok" });
-  res.json(data);
+  res.json(payload());
+});
+
+router.get("/health", (_req, res) => {
+  res.json(payload());
 });
 
 export default router;

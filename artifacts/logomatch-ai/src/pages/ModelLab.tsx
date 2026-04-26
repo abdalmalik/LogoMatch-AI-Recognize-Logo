@@ -39,10 +39,10 @@ const ARCHITECTURES = [
 
 const LOG_LINES = [
   "[boot] LogoMatch runtime initialized",
-  "[backend] FastAPI bridge: NOT CONNECTED",
+  "[backend] Express + SQLite bridge: CONNECTED",
   "[model] No checkpoint loaded",
   "[device] cpu=available · gpu=pending",
-  "[status] waiting for Phase 2 — training enabled once backend is wired",
+  "[status] waiting for Phase 3 — training enabled once model is wired",
 ];
 
 export default function ModelLab() {

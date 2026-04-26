@@ -84,10 +84,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <div className="glass-card rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-            <p className="text-xs font-medium">Phase 1 — Foundation</p>
+            <p className="text-xs font-medium">Phase 2 — Backend Live</p>
           </div>
           <p className="text-[10px] leading-relaxed text-muted-foreground">
-            AI inference unlocks in Phase 2 once the FastAPI backend is wired up.
+            AI inference unlocks in Phase 3 once the few-shot model is wired in.
           </p>
         </div>
       </div>

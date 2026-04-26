@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { UPLOADS_ROOT } from "./lib/uploads";
 
 const app: Express = express();
 
@@ -26,8 +27,17 @@ app.use(
   }),
 );
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded files so the frontend can render them.
+app.use(
+  "/api/uploads",
+  express.static(UPLOADS_ROOT, {
+    fallthrough: false,
+    maxAge: "1h",
+  }),
+);
 
 app.use("/api", router);
 

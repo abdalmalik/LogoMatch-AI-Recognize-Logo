@@ -11,15 +11,21 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { MetricCard } from "@/components/MetricCard";
-import { useCompanies } from "@/store/companies";
+import {
+  useCompaniesQuery,
+  useRecognitionCountQuery,
+} from "@/store/companies";
 import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
-  const { state } = useCompanies();
-  const totalCompanies = state.companies.length;
-  const totalImages = state.companies.reduce((acc, c) => acc + c.images.length, 0);
+  const { data: companies = [] } = useCompaniesQuery();
+  const { data: recognitionCount = 0 } = useRecognitionCountQuery();
 
-  const recent = [...state.companies].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5);
+  const totalCompanies = companies.length;
+  const totalImages = companies.reduce((acc, c) => acc + c.images.length, 0);
+
+  // The list comes from the server already sorted DESC by id; take the top 5.
+  const recent = companies.slice(0, 5);
 
   return (
     <div>
@@ -45,17 +51,17 @@ export default function Dashboard() {
         />
         <MetricCard
           label="Recognition Tests"
-          value={0}
+          value={recognitionCount}
           icon={<ScanSearch className="h-5 w-5" />}
           accent="blue"
-          hint="Awaiting model"
+          hint={recognitionCount === 0 ? "No tests yet" : "Demo mode"}
         />
         <MetricCard
           label="Model Status"
           value="Not Trained"
           icon={<Cpu className="h-5 w-5" />}
           accent="purple"
-          hint="Phase 2 unlocks training"
+          hint="Phase 3 unlocks AI"
         />
       </div>
 
@@ -73,7 +79,7 @@ export default function Dashboard() {
               </p>
             </div>
             <Link href="/dataset">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-xs cursor-pointer">
                 View All <ArrowRight className="h-3.5 w-3.5" />
               </Button>
             </Link>
@@ -98,7 +104,7 @@ export default function Dashboard() {
                         className="h-10 w-10 rounded-md border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center"
                       >
                         <img
-                          src={img.dataUrl}
+                          src={img.url}
                           alt={c.name}
                           className="h-full w-full object-contain p-1"
                         />
@@ -112,7 +118,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground hidden sm:block">
-                    {new Date(c.createdAt).toLocaleString()}
+                    {new Date(c.createdAt + "Z").toLocaleString()}
                   </p>
                 </div>
               ))}
@@ -132,7 +138,7 @@ export default function Dashboard() {
           </div>
 
           <Link href="/add-logo">
-            <button className="w-full text-left p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:border-primary/40 hover:bg-primary/5 transition-all group">
+            <button className="w-full text-left p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:border-primary/40 hover:bg-primary/5 transition-all group cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-md bg-primary/10 border border-primary/30 text-primary flex items-center justify-center">
                   <PlusSquare className="h-4 w-4" />
@@ -147,7 +153,7 @@ export default function Dashboard() {
           </Link>
 
           <Link href="/recognize">
-            <button className="w-full text-left p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:border-accent/40 hover:bg-accent/5 transition-all group">
+            <button className="w-full text-left p-4 rounded-lg border border-white/10 bg-white/[0.02] hover:border-accent/40 hover:bg-accent/5 transition-all group cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-md bg-accent/10 border border-accent/30 text-accent flex items-center justify-center">
                   <ScanLine className="h-4 w-4" />
@@ -165,12 +171,12 @@ export default function Dashboard() {
             <p className="text-xs uppercase tracking-wider text-primary font-medium">
               Pipeline
             </p>
-            <p className="text-sm font-medium mt-1">Phase 1 of 2 complete</p>
+            <p className="text-sm font-medium mt-1">Phase 2 of 3 complete</p>
             <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full w-1/2 bg-gradient-to-r from-primary to-accent" />
+              <div className="h-full w-2/3 bg-gradient-to-r from-primary to-accent" />
             </div>
             <p className="text-[10px] text-muted-foreground mt-2">
-              Next: connect FastAPI backend & few-shot model
+              Backend live · Phase 3 wires in the few-shot model
             </p>
           </div>
         </motion.div>

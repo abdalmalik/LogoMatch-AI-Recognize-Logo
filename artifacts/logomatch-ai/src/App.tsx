@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { CompaniesProvider } from "@/store/companies";
 import { AppShell } from "@/layouts/AppShell";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
@@ -55,23 +54,21 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <CompaniesProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-          <SonnerToaster
-            theme="dark"
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: "hsl(222 47% 6%)",
-                border: "1px solid hsl(217 33% 17%)",
-                color: "hsl(210 40% 98%)",
-              },
-            }}
-          />
-        </CompaniesProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+        <Toaster />
+        <SonnerToaster
+          theme="dark"
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: "hsl(222 47% 6%)",
+              border: "1px solid hsl(217 33% 17%)",
+              color: "hsl(210 40% 98%)",
+            },
+          }}
+        />
       </TooltipProvider>
     </QueryClientProvider>
   );

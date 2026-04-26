@@ -1,14 +1,19 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Save, Trash2, Building2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Save, Trash2, Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { UploadBox } from "@/components/UploadBox";
 import { ImagePreviewGrid } from "@/components/ImagePreviewGrid";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useCompanies } from "@/store/companies";
+import {
+  useCompaniesQuery,
+  useCreateCompanyMutation,
+  useDeleteCompanyMutation,
+} from "@/store/companies";
 import { fileToDataUrl, isImageFile } from "@/lib/file-utils";
 
 const REQUIRED_COUNT = 5;
@@ -20,22 +25,22 @@ type StagedFile = {
 };
 
 export default function AddLogo() {
-  const { state, dispatch } = useCompanies();
+  const { data: companies = [] } = useCompaniesQuery();
+  const createMutation = useCreateCompanyMutation();
+  const deleteMutation = useDeleteCompanyMutation();
+
   const [companyName, setCompanyName] = useState("");
+  const [description, setDescription] = useState("");
   const [staged, setStaged] = useState<StagedFile[]>([]);
   const [rejected, setRejected] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
 
   const onFilesSelected = async (files: File[]) => {
     setRejected([]);
     const accepted: File[] = [];
     const refused: string[] = [];
     for (const f of files) {
-      if (isImageFile(f)) {
-        accepted.push(f);
-      } else {
-        refused.push(f.name);
-      }
+      if (isImageFile(f)) accepted.push(f);
+      else refused.push(f.name);
     }
     if (refused.length > 0) {
       setRejected(refused);
@@ -74,34 +79,36 @@ export default function AddLogo() {
     return `Too many images. Please remove ${staged.length - REQUIRED_COUNT} to keep exactly ${REQUIRED_COUNT}.`;
   }, [staged.length]);
 
-  const isValid = trimmedName.length > 0 && staged.length === REQUIRED_COUNT;
+  const isValid =
+    trimmedName.length > 0 && staged.length === REQUIRED_COUNT && !createMutation.isPending;
 
   const handleSave = async () => {
     if (!isValid) return;
-    setSubmitting(true);
     try {
-      dispatch({
-        type: "ADD_COMPANY",
-        payload: {
-          id: crypto.randomUUID(),
-          name: trimmedName,
-          createdAt: Date.now(),
-          images: staged.map((s) => ({
-            id: s.id,
-            dataUrl: s.dataUrl,
-            name: s.file.name,
-          })),
-        },
+      const created = await createMutation.mutateAsync({
+        name: trimmedName,
+        description: description.trim(),
+        images: staged.map((s) => s.file),
       });
-      toast.success(`${trimmedName} added to dataset`, {
-        description: `${REQUIRED_COUNT} reference images stored.`,
+      toast.success(`${created.name} added to dataset`, {
+        description: `${created.images.length} reference images stored on server.`,
       });
       setCompanyName("");
+      setDescription("");
       setStaged([]);
       setRejected([]);
-    } finally {
-      setSubmitting(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Failed to save company", { description: message });
     }
+  };
+
+  const handleClearAll = () => {
+    setCompanyName("");
+    setDescription("");
+    setStaged([]);
+    setRejected([]);
+    toast("Cleared", { description: "Form reset." });
   };
 
   const previewItems = staged.map((s) => ({
@@ -132,7 +139,23 @@ export default function AddLogo() {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="e.g. Acme Corp"
+              disabled={createMutation.isPending}
               className="bg-white/[0.03] border-white/10 focus-visible:ring-primary/40"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="company-description" className="text-sm font-medium">
+              Description <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Textarea
+              id="company-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="A short note about this brand…"
+              rows={2}
+              disabled={createMutation.isPending}
+              className="bg-white/[0.03] border-white/10 focus-visible:ring-primary/40 resize-none"
             />
           </div>
 
@@ -152,11 +175,11 @@ export default function AddLogo() {
 
             <UploadBox
               multiple
-              accept="image/*"
+              accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
               onFilesSelected={onFilesSelected}
               label="Drop images or click to browse"
-              hint="Image files only · 5 required per company"
-              disabled={staged.length >= REQUIRED_COUNT}
+              hint="PNG, JPG, JPEG, SVG, WEBP · 5 required per company"
+              disabled={staged.length >= REQUIRED_COUNT || createMutation.isPending}
             />
 
             {rejected.length > 0 && (
@@ -173,7 +196,7 @@ export default function AddLogo() {
               <div className="pt-2">
                 <ImagePreviewGrid
                   items={previewItems}
-                  onRemove={removeStaged}
+                  onRemove={createMutation.isPending ? undefined : removeStaged}
                   emptySlots={Math.max(0, REQUIRED_COUNT - staged.length)}
                 />
               </div>
@@ -197,21 +220,23 @@ export default function AddLogo() {
           <div className="flex items-center gap-3 pt-2 border-t border-white/5">
             <Button
               onClick={handleSave}
-              disabled={!isValid || submitting}
+              disabled={!isValid}
               className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.4)] gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer"
             >
-              <Save className="h-4 w-4" />
-              Save Company
+              {createMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {createMutation.isPending ? "Uploading…" : "Save Company"}
             </Button>
             <Button
               variant="ghost"
-              onClick={() => {
-                setCompanyName("");
-                setStaged([]);
-                setRejected([]);
-                toast("Cleared", { description: "Form reset." });
-              }}
-              disabled={!companyName && staged.length === 0}
+              onClick={handleClearAll}
+              disabled={
+                createMutation.isPending ||
+                (!companyName && !description && staged.length === 0)
+              }
               className="cursor-pointer disabled:cursor-not-allowed"
             >
               Clear All
@@ -231,18 +256,17 @@ export default function AddLogo() {
               In Your Dataset
             </h3>
             <p className="text-xs text-muted-foreground mt-1">
-              {state.companies.length} compan
-              {state.companies.length === 1 ? "y" : "ies"} added so far
+              {companies.length} compan{companies.length === 1 ? "y" : "ies"} added so far
             </p>
           </div>
 
-          {state.companies.length === 0 ? (
+          {companies.length === 0 ? (
             <div className="text-center py-10 text-xs text-muted-foreground">
               Your saved companies will show up here.
             </div>
           ) : (
-            <div className="space-y-3">
-              {state.companies.map((c) => (
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+              {companies.map((c) => (
                 <div
                   key={c.id}
                   className="rounded-lg border border-white/5 bg-white/[0.02] p-3 hover:border-primary/30 transition-colors"
@@ -250,10 +274,17 @@ export default function AddLogo() {
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium truncate">{c.name}</p>
                     <button
-                      onClick={() =>
-                        dispatch({ type: "REMOVE_COMPANY", payload: c.id })
-                      }
-                      className="text-muted-foreground hover:text-destructive transition-colors"
+                      onClick={async () => {
+                        try {
+                          await deleteMutation.mutateAsync(c.id);
+                          toast.success(`${c.name} removed`);
+                        } catch (err) {
+                          const m = err instanceof Error ? err.message : "Unknown error";
+                          toast.error("Failed to delete", { description: m });
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                      className="text-muted-foreground hover:text-destructive transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label={`Remove ${c.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -266,8 +297,8 @@ export default function AddLogo() {
                         className="aspect-square rounded bg-white/5 overflow-hidden border border-white/5"
                       >
                         <img
-                          src={img.dataUrl}
-                          alt={img.name}
+                          src={img.url}
+                          alt={img.originalName}
                           className="h-full w-full object-contain p-1"
                         />
                       </div>

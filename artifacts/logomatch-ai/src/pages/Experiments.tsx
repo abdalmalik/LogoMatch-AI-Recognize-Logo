@@ -112,8 +112,8 @@ export default function Experiments() {
         </div>
 
         <div className="px-5 py-4 border-t border-white/5 bg-white/[0.02] text-xs text-muted-foreground">
-          Experiment tracking is read-only in Phase 1. Real metrics, charts, and
-          checkpoints arrive once the FastAPI backend and few-shot model are wired in.
+          Experiment tracking is read-only until Phase 3. Real metrics, charts, and
+          checkpoints arrive once the few-shot model is wired in.
         </div>
       </motion.div>
     </div>

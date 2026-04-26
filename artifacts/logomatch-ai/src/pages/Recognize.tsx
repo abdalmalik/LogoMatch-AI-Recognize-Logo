@@ -7,65 +7,59 @@ import { UploadBox } from "@/components/UploadBox";
 import { ResultCard } from "@/components/ResultCard";
 import { StatusPill } from "@/components/StatusPill";
 import { Button } from "@/components/ui/button";
-import { useCompanies } from "@/store/companies";
+import { useRecognizeDemoMutation } from "@/store/companies";
 import { fileToDataUrl, isImageFile } from "@/lib/file-utils";
-
-type DemoResult = {
-  status: "Demo Mode";
-  predictedCompany: "Awaiting AI Backend";
-  similarityScore: "Not available in Phase 1";
-  message: string;
-};
+import type { RecognizeDemoResponse } from "@/services/api";
 
 export default function Recognize() {
-  const { dispatch } = useCompanies();
+  const recognizeMutation = useRecognizeDemoMutation();
+  const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<{ src: string; name: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<DemoResult | null>(null);
+  const [result, setResult] = useState<RecognizeDemoResponse | null>(null);
 
   const onFilesSelected = async (files: File[]) => {
     setError(null);
     setResult(null);
-    const file = files[0];
-    if (!file) return;
-    if (!isImageFile(file)) {
-      setError(`"${file.name}" is not an image file. Use PNG, JPG, JPEG, SVG, or WEBP.`);
+    const f = files[0];
+    if (!f) return;
+    if (!isImageFile(f)) {
+      setError(`"${f.name}" is not an image file. Use PNG, JPG, JPEG, SVG, or WEBP.`);
       toast.error("Invalid file type", {
         description: "Only PNG, JPG, JPEG, SVG, or WEBP images are accepted.",
       });
       return;
     }
-    const src = await fileToDataUrl(file);
-    setPreview({ src, name: file.name });
+    const src = await fileToDataUrl(f);
+    setFile(f);
+    setPreview({ src, name: f.name });
   };
 
   const clearImage = () => {
+    setFile(null);
     setPreview(null);
     setResult(null);
     setError(null);
   };
 
   const runRecognize = async () => {
-    if (!preview) return;
-    setRunning(true);
+    if (!file) return;
     setResult(null);
-    await new Promise((r) => setTimeout(r, 900));
-    setResult({
-      status: "Demo Mode",
-      predictedCompany: "Awaiting AI Backend",
-      similarityScore: "Not available in Phase 1",
-      message:
-        "The image upload pipeline is working. Real recognition will be added in Phase 2.",
-    });
-    dispatch({ type: "INCREMENT_RECOGNITION_TESTS" });
-    setRunning(false);
-    toast.success("Demo recognition complete", {
-      description: "Pipeline OK — real model arrives in Phase 2.",
-    });
+    try {
+      const data = await recognizeMutation.mutateAsync(file);
+      setResult(data);
+      toast.success("Upload received", {
+        description: data.message,
+      });
+    } catch (err) {
+      const m = err instanceof Error ? err.message : "Unknown error";
+      setError(m);
+      toast.error("Recognition request failed", { description: m });
+    }
   };
 
-  const canRecognize = !!preview && !running;
+  const running = recognizeMutation.isPending;
+  const canRecognize = !!file && !running;
 
   return (
     <div>
@@ -91,7 +85,8 @@ export default function Recognize() {
             <div className="relative rounded-xl border border-white/10 bg-white/[0.02] overflow-hidden">
               <button
                 onClick={clearImage}
-                className="absolute top-3 right-3 z-10 h-7 w-7 rounded-full bg-black/70 backdrop-blur border border-white/10 flex items-center justify-center hover:bg-destructive/80 transition-colors cursor-pointer"
+                disabled={running}
+                className="absolute top-3 right-3 z-10 h-7 w-7 rounded-full bg-black/70 backdrop-blur border border-white/10 flex items-center justify-center hover:bg-destructive/80 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Clear image"
               >
                 <X className="h-3.5 w-3.5" />
@@ -127,19 +122,19 @@ export default function Recognize() {
             <Button
               onClick={runRecognize}
               disabled={!canRecognize}
-              className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.4)] gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              className="bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 shadow-[0_0_20px_rgba(99,102,241,0.4)] gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none cursor-pointer"
             >
               {running ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <ScanLine className="h-4 w-4" />
               )}
-              {running ? "Running…" : "Recognize"}
+              {running ? "Uploading…" : "Recognize"}
             </Button>
             <Button
               variant="ghost"
               onClick={clearImage}
-              disabled={!preview && !result}
+              disabled={(!preview && !result) || running}
               className="cursor-pointer disabled:cursor-not-allowed"
             >
               Clear Image
@@ -179,7 +174,7 @@ export default function Recognize() {
                         Predicted Company
                       </p>
                       <p className="text-2xl font-semibold mt-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                        {result.predictedCompany}
+                        {result.predicted_company ?? "Awaiting AI Backend"}
                       </p>
                     </div>
 
@@ -188,8 +183,17 @@ export default function Recognize() {
                         Similarity Score
                       </p>
                       <p className="font-mono text-sm mt-1 text-muted-foreground">
-                        {result.similarityScore}
+                        {result.similarity_score ?? "Not available in Phase 2"}
                       </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                        Saved on server as
+                      </p>
+                      <code className="text-[11px] font-mono break-all rounded bg-white/5 border border-white/10 px-2 py-1 inline-block text-muted-foreground">
+                        {result.uploaded_image_path}
+                      </code>
                     </div>
 
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs text-foreground/80">

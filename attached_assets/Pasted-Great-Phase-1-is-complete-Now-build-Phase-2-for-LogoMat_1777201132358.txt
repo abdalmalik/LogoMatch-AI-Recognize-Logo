@@ -1,0 +1,143 @@
+Great. Phase 1 is complete.
+
+Now build Phase 2 for LogoMatch AI: Backend + Database + Real Storage.
+
+Important:
+Do not add the real AI model yet.
+Do not add Siamese Network yet.
+Do not add Prototypical Network yet.
+This phase is only for backend, database, image storage, and API integration.
+
+Current app:
+- React + Vite frontend
+- Modern AI dashboard UI
+- Add Company Logo page
+- Recognize Logo page
+- Dataset Manager page
+- Phase 1 upload interactions are working
+
+Phase 2 requirements:
+
+1. Backend
+Create a simple backend API using Node.js + Express inside the same Replit project.
+
+Use:
+- Express
+- Multer for image uploads
+- SQLite for database
+- CORS
+- File system storage for uploaded images
+
+2. Database
+Create SQLite database with these tables:
+
+companies:
+- id
+- name
+- description
+- created_at
+
+logo_images:
+- id
+- company_id
+- filename
+- original_name
+- file_path
+- mime_type
+- size
+- created_at
+
+recognition_tests:
+- id
+- uploaded_filename
+- uploaded_path
+- status
+- created_at
+
+3. API Endpoints
+Create these endpoints:
+
+GET /api/health
+Returns backend status.
+
+POST /api/companies
+Creates a company with:
+- company name
+- optional description
+- exactly 5 logo images
+
+GET /api/companies
+Returns all companies with their uploaded logo images.
+
+GET /api/companies/:id
+Returns one company with its images.
+
+DELETE /api/companies/:id
+Deletes company and its images from database and file storage.
+
+POST /api/recognize/demo
+Accepts one uploaded image and saves it as a recognition test.
+Do not run AI yet.
+Return a demo response:
+- status: Demo Mode
+- message: Upload received successfully. Real AI recognition will be added in Phase 3.
+- uploaded image path
+- similarity_score: null
+- predicted_company: null
+
+4. Storage
+Create folders:
+server/
+  uploads/
+    companies/
+    recognition_tests/
+
+Save company logo images in:
+server/uploads/companies/company_<id>/
+
+Save recognition test images in:
+server/uploads/recognition_tests/
+
+5. Frontend Integration
+Update the frontend so:
+
+Add Company Logo page:
+- Sends company name, description, and exactly 5 images to POST /api/companies
+- Shows loading state while uploading
+- Shows success toast after saving
+- Shows backend error messages clearly
+
+Dataset Manager page:
+- Fetches companies from GET /api/companies
+- Displays company cards
+- Shows the 5 uploaded logo images per company
+- Shows upload date
+- Allows deleting a company using DELETE /api/companies/:id
+- Shows empty state if no companies exist
+
+Recognize Logo page:
+- Sends the uploaded test image to POST /api/recognize/demo
+- Shows the returned demo response
+- Shows uploaded test image preview
+- Keep the message clear that real AI recognition will be added in Phase 3
+
+6. Development Setup
+Make sure the project runs successfully in Replit.
+If needed:
+- Add server start script
+- Add client start script
+- Add concurrently to run frontend and backend together
+
+7. Code Quality
+- Keep code clean and modular
+- Do not break the existing UI
+- Preserve the current design
+- Add useful error handling
+- Add comments only where helpful
+- Make the app stable and ready for Phase 3 AI embedding pipeline
+
+Important:
+Do not redesign the project.
+Do not fake AI results.
+Do not add real ML yet.
+Focus only on backend, SQLite database, real image upload, and frontend API integration.

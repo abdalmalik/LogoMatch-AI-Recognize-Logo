@@ -1,68 +1,62 @@
-import { createContext, useContext, useReducer, ReactNode } from "react";
+// React Query–based hooks for the companies + recognition data.
+// The previous in-memory store has been replaced by the live backend.
 
-export type CompanyImage = {
-  id: string;
-  dataUrl: string;
-  name: string;
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  listCompanies,
+  createCompany,
+  deleteCompany,
+  recognizeDemo,
+  fetchRecognitionTestCount,
+  type CompanyDto,
+  type RecognizeDemoResponse,
+} from "@/services/api";
+
+export const queryKeys = {
+  companies: ["companies"] as const,
+  recognitionCount: ["recognition-count"] as const,
 };
 
-export type Company = {
-  id: string;
-  name: string;
-  images: CompanyImage[];
-  createdAt: number;
-};
-
-type State = {
-  companies: Company[];
-  recognitionTests: number;
-};
-
-type Action =
-  | { type: "ADD_COMPANY"; payload: Company }
-  | { type: "REMOVE_COMPANY"; payload: string }
-  | { type: "INCREMENT_RECOGNITION_TESTS" };
-
-const initialState: State = {
-  companies: [],
-  recognitionTests: 0,
-};
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case "ADD_COMPANY":
-      return { ...state, companies: [...state.companies, action.payload] };
-    case "REMOVE_COMPANY":
-      return {
-        ...state,
-        companies: state.companies.filter((c) => c.id !== action.payload),
-      };
-    case "INCREMENT_RECOGNITION_TESTS":
-      return { ...state, recognitionTests: state.recognitionTests + 1 };
-    default:
-      return state;
-  }
+export function useCompaniesQuery() {
+  return useQuery<CompanyDto[]>({
+    queryKey: queryKeys.companies,
+    queryFn: listCompanies,
+  });
 }
 
-const CompaniesContext = createContext<{
-  state: State;
-  dispatch: React.Dispatch<Action>;
-} | null>(null);
-
-export function CompaniesProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
-
-  return (
-    <CompaniesContext.Provider value={{ state, dispatch }}>
-      {children}
-    </CompaniesContext.Provider>
-  );
+export function useRecognitionCountQuery() {
+  return useQuery<number>({
+    queryKey: queryKeys.recognitionCount,
+    queryFn: fetchRecognitionTestCount,
+  });
 }
 
-export function useCompanies() {
-  const context = useContext(CompaniesContext);
-  if (!context) {
-    throw new Error("useCompanies must be used within a CompaniesProvider");
-  }
-  return context;
+export function useCreateCompanyMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createCompany,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.companies });
+    },
+  });
+}
+
+export function useDeleteCompanyMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteCompany(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.companies });
+    },
+  });
+}
+
+export function useRecognizeDemoMutation() {
+  const qc = useQueryClient();
+  return useMutation<RecognizeDemoResponse, Error, File>({
+    mutationFn: (file: File) => recognizeDemo(file),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.recognitionCount });
+    },
+  });
 }
