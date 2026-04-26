@@ -186,9 +186,3 @@ Use images that were not part of the 5-image support set when you want a meaning
 - Include normal logo variations, but avoid mixing unrelated marks under one company.
 - Regenerate prototypes after changing the dataset or after extractor upgrades.
 - Use Evaluation repeatedly with held-out test images to compare accuracy over time.
-
-## Replit Notes
-
-- Replit metadata is left in place for reference but ignored for local development.
-- The app is run locally through pnpm workspace scripts.
-- The frontend calls `/api`, and Vite proxies that path to the local API server.
