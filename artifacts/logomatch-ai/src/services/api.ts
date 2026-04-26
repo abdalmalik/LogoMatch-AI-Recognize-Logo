@@ -16,17 +16,59 @@ export type CompanyDto = {
   name: string;
   description: string | null;
   createdAt: string;
+  prototypeReady: boolean;
+  prototypeModel: string | null;
+  prototypeCreatedAt: string | null;
   images: LogoImageDto[];
+};
+
+export type TopMatchDto = {
+  company_id: number;
+  company_name: string;
+  score: number;
+  percentage: number;
+};
+
+export type PredictionStatus =
+  | "high_confidence"
+  | "medium_confidence"
+  | "low_confidence"
+  | "unknown";
+
+export type PredictedCompanyDto = {
+  id: number;
+  name: string;
 };
 
 export type RecognizeDemoResponse = {
   id: number;
-  status: "Demo Mode";
+  status: "success";
+  prediction_status: PredictionStatus;
   message: string;
   uploaded_image_path: string;
   original_name: string;
   similarity_score: number | null;
-  predicted_company: string | null;
+  similarity_percentage: number | null;
+  predicted_company: PredictedCompanyDto | null;
+  top_matches: TopMatchDto[];
+  embedding_model?: string;
+  embedding_dimension?: number;
+};
+
+export type EvaluationSummaryDto = {
+  total: number;
+  correct: number;
+  incorrect: number;
+  accuracy_percentage: number;
+};
+
+export type EvaluationResponseDto = {
+  id: number;
+  expected_company: PredictedCompanyDto;
+  correct: boolean;
+  uploaded_image_path: string;
+  result: Omit<RecognizeDemoResponse, "id" | "uploaded_image_path" | "original_name">;
+  summary: EvaluationSummaryDto;
 };
 
 const API_BASE = "/api";
@@ -87,10 +129,27 @@ export async function deleteCompany(id: number): Promise<void> {
   if (!res.ok) throw new Error(await parseError(res));
 }
 
+export async function regenerateCompanyPrototype(id: number): Promise<CompanyDto> {
+  const res = await fetch(`${API_BASE}/companies/${id}/prototype`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = (await res.json()) as { company: CompanyDto };
+  return data.company;
+}
+
+export async function regenerateAllPrototypes(): Promise<{ regenerated: number; failed?: number }> {
+  const res = await fetch(`${API_BASE}/companies/prototypes/regenerate`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function recognizeDemo(file: File): Promise<RecognizeDemoResponse> {
   const fd = new FormData();
   fd.append("image", file);
-  const res = await fetch(`${API_BASE}/recognize/demo`, {
+  const res = await fetch(`${API_BASE}/recognize`, {
     method: "POST",
     body: fd,
   });
@@ -103,4 +162,26 @@ export async function fetchRecognitionTestCount(): Promise<number> {
   if (!res.ok) throw new Error(await parseError(res));
   const data = (await res.json()) as { count: number };
   return data.count;
+}
+
+export async function fetchEvaluationSummary(): Promise<EvaluationSummaryDto> {
+  const res = await fetch(`${API_BASE}/evaluations/summary`);
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function evaluateLogo(input: {
+  expectedCompanyId: number;
+  image: File;
+}): Promise<EvaluationResponseDto> {
+  const fd = new FormData();
+  fd.append("expectedCompanyId", String(input.expectedCompanyId));
+  fd.append("image", input.image);
+
+  const res = await fetch(`${API_BASE}/evaluations`, {
+    method: "POST",
+    body: fd,
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
 }

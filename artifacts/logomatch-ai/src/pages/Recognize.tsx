@@ -9,7 +9,31 @@ import { StatusPill } from "@/components/StatusPill";
 import { Button } from "@/components/ui/button";
 import { useRecognizeDemoMutation } from "@/store/companies";
 import { fileToDataUrl, isImageFile } from "@/lib/file-utils";
-import type { RecognizeDemoResponse } from "@/services/api";
+import type { PredictionStatus, RecognizeDemoResponse } from "@/services/api";
+
+function scorePercent(score: number | null | undefined): string {
+  if (typeof score !== "number") return "Not available";
+  return `${(score * 100).toFixed(1)}%`;
+}
+
+function confidenceLabel(status: PredictionStatus | undefined): string {
+  switch (status) {
+    case "high_confidence":
+      return "High Confidence";
+    case "medium_confidence":
+      return "Medium Confidence";
+    case "low_confidence":
+      return "Low Confidence";
+    default:
+      return "Unknown";
+  }
+}
+
+function confidenceVariant(status: PredictionStatus | undefined): "active" | "warning" | "danger" {
+  if (status === "high_confidence") return "active";
+  if (status === "medium_confidence") return "warning";
+  return "danger";
+}
 
 export default function Recognize() {
   const recognizeMutation = useRecognizeDemoMutation();
@@ -48,9 +72,15 @@ export default function Recognize() {
     try {
       const data = await recognizeMutation.mutateAsync(file);
       setResult(data);
-      toast.success("Upload received", {
-        description: data.message,
-      });
+      if (data.prediction_status === "high_confidence" || data.prediction_status === "medium_confidence") {
+        toast.success("Recognition completed", {
+          description: data.message,
+        });
+      } else {
+        toast.warning("Low-confidence match", {
+          description: data.message,
+        });
+      }
     } catch (err) {
       const m = err instanceof Error ? err.message : "Unknown error";
       setError(m);
@@ -60,6 +90,7 @@ export default function Recognize() {
 
   const running = recognizeMutation.isPending;
   const canRecognize = !!file && !running;
+  const hasPrediction = !!result?.predicted_company;
 
   return (
     <div>
@@ -77,7 +108,7 @@ export default function Recognize() {
           <div>
             <h3 className="font-semibold">Test Image</h3>
             <p className="text-xs text-muted-foreground">
-              One image · accepted formats: PNG, JPG, JPEG, SVG, WEBP
+              One image - accepted formats: PNG, JPG, JPEG, SVG, WEBP
             </p>
           </div>
 
@@ -107,7 +138,7 @@ export default function Recognize() {
               accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
               onFilesSelected={onFilesSelected}
               label="Drop a logo to recognize"
-              hint="Single image · PNG, JPG, JPEG, SVG, WEBP"
+              hint="Single image - PNG, JPG, JPEG, SVG, WEBP"
             />
           )}
 
@@ -129,7 +160,7 @@ export default function Recognize() {
               ) : (
                 <ScanLine className="h-4 w-4" />
               )}
-              {running ? "Uploading…" : "Recognize"}
+              {running ? "Recognizing..." : "Recognize"}
             </Button>
             <Button
               variant="ghost"
@@ -151,7 +182,7 @@ export default function Recognize() {
           <AnimatePresence mode="wait">
             {result ? (
               <motion.div
-                key="demo-result"
+                key="recognition-result"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
@@ -165,7 +196,10 @@ export default function Recognize() {
                       <Sparkles className="h-3.5 w-3.5 text-primary" />
                       Recognition Result
                     </div>
-                    <StatusPill label={result.status} variant="warning" />
+                    <StatusPill
+                      label={confidenceLabel(result.prediction_status)}
+                      variant={confidenceVariant(result.prediction_status)}
+                    />
                   </div>
 
                   <div className="space-y-4">
@@ -174,27 +208,70 @@ export default function Recognize() {
                         Predicted Company
                       </p>
                       <p className="text-2xl font-semibold mt-1 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                        {result.predicted_company ?? "Awaiting AI Backend"}
+                        {result.predicted_company?.name ?? "Unknown or low-confidence match"}
                       </p>
                     </div>
 
                     <div>
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                        Similarity Score
-                      </p>
-                      <p className="font-mono text-sm mt-1 text-muted-foreground">
-                        {result.similarity_score ?? "Not available in Phase 2"}
-                      </p>
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="uppercase tracking-wider text-muted-foreground">
+                          Similarity Score
+                        </span>
+                        <span className="font-mono text-primary">
+                          {result.similarity_percentage !== null
+                            ? `${result.similarity_percentage}%`
+                            : scorePercent(result.similarity_score)}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-primary to-accent"
+                          style={{
+                            width: `${Math.max(0, Math.min(1, result.similarity_score ?? 0)) * 100}%`,
+                          }}
+                        />
+                      </div>
                     </div>
 
                     <div>
                       <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-                        Saved on server as
+                        Top 3 Matches
                       </p>
-                      <code className="text-[11px] font-mono break-all rounded bg-white/5 border border-white/10 px-2 py-1 inline-block text-muted-foreground">
-                        {result.uploaded_image_path}
-                      </code>
+                      {result.top_matches.length > 0 ? (
+                        <div className="space-y-2">
+                          {result.top_matches.map((match, index) => (
+                            <div
+                              key={match.company_id}
+                              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 flex items-center justify-between gap-3"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {index + 1}. {match.company_name}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                  Company ID {match.company_id}
+                                </p>
+                              </div>
+                              <span className="font-mono text-xs text-primary shrink-0">
+                                {match.percentage}%
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2 text-xs text-amber-200">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+                          <p>Add at least one company with a generated prototype before recognition.</p>
+                        </div>
+                      )}
                     </div>
+
+                    {result.prediction_status === "low_confidence" && (
+                      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-2 text-xs text-amber-200">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-400" />
+                        <p>The uploaded logo does not confidently match any stored company.</p>
+                      </div>
+                    )}
 
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2 text-xs text-foreground/80">
                       <Info className="h-4 w-4 shrink-0 mt-0.5 text-primary" />
@@ -225,7 +302,7 @@ export default function Recognize() {
                   1
                 </span>
                 <span className="text-muted-foreground">
-                  Encode test image into embedding vector
+                  Generate a normalized image embedding
                 </span>
               </li>
               <li className="flex items-center gap-3">
@@ -233,7 +310,7 @@ export default function Recognize() {
                   2
                 </span>
                 <span className="text-muted-foreground">
-                  Compare against company prototypes
+                  Compare with stored company prototypes
                 </span>
               </li>
               <li className="flex items-center gap-3">
@@ -241,7 +318,7 @@ export default function Recognize() {
                   3
                 </span>
                 <span className="text-muted-foreground">
-                  Return nearest match with confidence
+                  Return best match and top 3 cosine scores
                 </span>
               </li>
             </ol>

@@ -8,6 +8,7 @@ import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import AddLogo from "@/pages/AddLogo";
 import Recognize from "@/pages/Recognize";
+import Evaluation from "@/pages/Evaluation";
 import ModelLab from "@/pages/ModelLab";
 import DatasetManager from "@/pages/DatasetManager";
 import Experiments from "@/pages/Experiments";
@@ -35,6 +36,9 @@ function Router() {
       </Route>
       <Route path="/recognize">
         <ShellRoute component={Recognize} />
+      </Route>
+      <Route path="/evaluation">
+        <ShellRoute component={Evaluation} />
       </Route>
       <Route path="/model-lab">
         <ShellRoute component={ModelLab} />

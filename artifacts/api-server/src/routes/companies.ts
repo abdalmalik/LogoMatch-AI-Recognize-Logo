@@ -14,6 +14,8 @@ import {
   COMPANY_UPLOADS,
 } from "../lib/uploads";
 import { logger } from "../lib/logger";
+import { rebuildAllCompanyPrototypes, rebuildCompanyPrototype } from "../lib/prototypes";
+import { EMBEDDING_DIM, EMBEDDING_MODEL } from "../lib/image-embedding";
 
 const router: IRouter = Router();
 
@@ -34,6 +36,9 @@ type CompanyDto = {
   name: string;
   description: string | null;
   createdAt: string;
+  prototypeReady: boolean;
+  prototypeModel: string | null;
+  prototypeCreatedAt: string | null;
   images: LogoImageDto[];
 };
 
@@ -47,6 +52,14 @@ function rowToImageDto(row: LogoImageRow): LogoImageDto {
     size: row.size,
     createdAt: row.created_at,
   };
+}
+
+function isPrototypeReady(company: CompanyRow): boolean {
+  return (
+    !!company.prototype_json &&
+    company.prototype_model === EMBEDDING_MODEL &&
+    company.prototype_dim === EMBEDDING_DIM
+  );
 }
 
 function loadCompany(id: number): CompanyDto | null {
@@ -66,6 +79,9 @@ function loadCompany(id: number): CompanyDto | null {
     name: company.name,
     description: company.description,
     createdAt: company.created_at,
+    prototypeReady: isPrototypeReady(company),
+    prototypeModel: company.prototype_model,
+    prototypeCreatedAt: company.prototype_created_at,
     images: images.map(rowToImageDto),
   };
 }
@@ -87,11 +103,50 @@ router.get("/companies", (_req, res) => {
       name: c.name,
       description: c.description,
       createdAt: c.created_at,
+      prototypeReady: isPrototypeReady(c),
+      prototypeModel: c.prototype_model,
+      prototypeCreatedAt: c.prototype_created_at,
       images: images.map(rowToImageDto),
     };
   });
 
   res.json({ companies: result });
+});
+
+router.post("/companies/prototypes/regenerate", async (_req, res) => {
+  try {
+    const results = await rebuildAllCompanyPrototypes();
+    const regenerated = results.filter((result) => result.prototypeReady).length;
+    const failed = results.length - regenerated;
+    res.json({
+      success: true,
+      regenerated,
+      failed,
+      results,
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to regenerate all prototypes");
+    const message = err instanceof Error ? err.message : "Failed to regenerate prototypes.";
+    res.status(500).json({ error: message });
+  }
+});
+
+router.post("/companies/:id/prototype", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid company id" });
+    return;
+  }
+
+  try {
+    const result = await rebuildCompanyPrototype(id);
+    const company = loadCompany(id);
+    res.json({ success: true, result, company });
+  } catch (err) {
+    logger.error({ err, companyId: id }, "Failed to regenerate company prototype");
+    const message = err instanceof Error ? err.message : "Failed to regenerate prototype.";
+    res.status(400).json({ error: message });
+  }
 });
 
 // GET /api/companies/:id — single company
@@ -113,7 +168,7 @@ router.get("/companies/:id", (req, res) => {
 router.post(
   "/companies",
   uploadCompanyImages.array("images", REQUIRED_IMAGES),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const name = (req.body?.name ?? "").toString().trim();
     const description = (req.body?.description ?? "").toString().trim() || null;
     const files = (req.files as Express.Multer.File[] | undefined) ?? [];
@@ -163,6 +218,8 @@ router.post(
         );
       }
 
+      await rebuildCompanyPrototype(companyId);
+
       const company = loadCompany(companyId);
       res.status(201).json({ company });
     } catch (err) {
@@ -184,7 +241,8 @@ router.post(
           /* ignore */
         }
       }
-      res.status(500).json({ error: "Failed to save company. Please try again." });
+      const message = err instanceof Error ? err.message : "Failed to save company. Please try again.";
+      res.status(400).json({ error: message });
     }
   },
 );

@@ -2,8 +2,10 @@ import path from "node:path";
 import fs from "node:fs";
 import multer from "multer";
 import { randomBytes } from "node:crypto";
+import { UPLOADS_ROOT } from "./paths";
 
-export const UPLOADS_ROOT = path.resolve(process.cwd(), "uploads");
+export { UPLOADS_ROOT } from "./paths";
+
 export const COMPANY_UPLOADS = path.join(UPLOADS_ROOT, "companies");
 export const RECOGNITION_UPLOADS = path.join(UPLOADS_ROOT, "recognition_tests");
 

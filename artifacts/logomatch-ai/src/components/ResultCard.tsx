@@ -24,7 +24,7 @@ export function ResultCard({ companyName, confidence, placeholder = false }: Res
             Recognition Result
           </div>
           <StatusPill
-            label={placeholder ? "Awaiting Model" : "Match Found"}
+            label={placeholder ? "Awaiting Image" : "Match Found"}
             variant={placeholder ? "warning" : "active"}
           />
         </div>
@@ -34,9 +34,9 @@ export function ResultCard({ companyName, confidence, placeholder = false }: Res
             <div className="h-7 w-2/3 rounded bg-white/5 animate-pulse" />
             <div className="h-4 w-1/3 rounded bg-white/5 animate-pulse" />
             <p className="text-xs text-muted-foreground pt-3 leading-relaxed">
-              Predictions will appear here once the AI backend is connected.
-              Phase 1 includes the upload pipeline, dataset, and UI shell.
-              Few-shot inference (Prototypical / Siamese) ships in Phase 2.
+              Predictions will appear here after you upload a test logo.
+              The backend compares the test embedding against stored company
+              prototypes and returns the nearest matches.
             </p>
           </div>
         ) : (

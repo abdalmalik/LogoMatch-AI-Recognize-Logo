@@ -1,18 +1,19 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { backfillMissingPrototypes } from "./lib/prototypes";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+const rawPort = process.env["PORT"] ?? "8080";
 
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
+}
+
+try {
+  await backfillMissingPrototypes();
+} catch (err) {
+  logger.warn({ err }, "Prototype backfill skipped");
 }
 
 app.listen(port, (err) => {

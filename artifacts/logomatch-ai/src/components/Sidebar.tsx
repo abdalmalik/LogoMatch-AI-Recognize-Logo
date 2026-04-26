@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   PlusSquare,
   ScanLine,
+  Target,
   FlaskConical,
   Database,
   LineChart,
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/add-logo", label: "Add Company Logo", icon: PlusSquare },
   { href: "/recognize", label: "Recognize Logo", icon: ScanLine },
+  { href: "/evaluation", label: "Evaluation", icon: Target },
   { href: "/model-lab", label: "Model Lab", icon: FlaskConical },
   { href: "/dataset", label: "Dataset Manager", icon: Database },
   { href: "/experiments", label: "Experiments", icon: LineChart },
@@ -84,10 +86,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <div className="glass-card rounded-lg p-3 space-y-2">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-            <p className="text-xs font-medium">Phase 2 — Backend Live</p>
+            <p className="text-xs font-medium">Phase 3.5 - Diagnostics</p>
           </div>
           <p className="text-[10px] leading-relaxed text-muted-foreground">
-            AI inference unlocks in Phase 3 once the few-shot model is wired in.
+            Prototype matching is live; evaluation tracks accuracy.
           </p>
         </div>
       </div>

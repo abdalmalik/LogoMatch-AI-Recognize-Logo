@@ -54,14 +54,14 @@ export default function Dashboard() {
           value={recognitionCount}
           icon={<ScanSearch className="h-5 w-5" />}
           accent="blue"
-          hint={recognitionCount === 0 ? "No tests yet" : "Demo mode"}
+          hint={recognitionCount === 0 ? "No tests yet" : "Prototype matching"}
         />
         <MetricCard
           label="Model Status"
-          value="Not Trained"
+          value="Prototype"
           icon={<Cpu className="h-5 w-5" />}
           accent="purple"
-          hint="Phase 3 unlocks AI"
+          hint="Phase 3.5 diagnostics"
         />
       </div>
 
@@ -171,9 +171,9 @@ export default function Dashboard() {
             <p className="text-xs uppercase tracking-wider text-primary font-medium">
               Pipeline
             </p>
-            <p className="text-sm font-medium mt-1">Phase 2 of 3 complete</p>
+            <p className="text-sm font-medium mt-1">Phase 3.5 active</p>
             <div className="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
-              <div className="h-full w-2/3 bg-gradient-to-r from-primary to-accent" />
+              <div className="h-full w-3/4 bg-gradient-to-r from-primary to-accent" />
             </div>
             <p className="text-[10px] text-muted-foreground mt-2">
               Backend live · Phase 3 wires in the few-shot model
